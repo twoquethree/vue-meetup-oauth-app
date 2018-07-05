@@ -1,0 +1,3 @@
+// auth.js
+
+export default {};
