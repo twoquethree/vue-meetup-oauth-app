@@ -4,8 +4,9 @@
 
 <script>
 export default {
-  data() {
-    return {};
+  name: "callback",
+  mounted() {
+    const code = this.$route.query.code;
   }
 };
 </script>
