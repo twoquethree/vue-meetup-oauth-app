@@ -2,22 +2,18 @@
 
 import Vue from "vue";
 import querystring from "querystring";
+import axios from "axios";
 
 const redirect_uri =
   process.env.VUE_APP_REDIRECT_URI || "http://localhost:8081/callback";
 const client_id = process.env.VUE_APP_MEETUP_CLIENT_ID;
 const response_type = "code";
+const apiEndpoint = process.env.VUE_APP_API_ENDPOINT;
+
+axios.defaults.baseURL = apiEndpoint;
 
 let auth = new Vue({
   computed: {
-    token: {
-      get: function() {
-        return localStorage.getItem("id_token");
-      },
-      set: function(id_token) {
-        localStorage.setItem("id_token", id_token);
-      }
-    },
     accessToken: {
       get: function() {
         return localStorage.getItem("access_token");
@@ -26,7 +22,15 @@ let auth = new Vue({
         localStorage.setItem("access_token", accessToken);
       }
     },
-    expiresAt: {
+    refreshToken: {
+      get: function() {
+        return localStorage.getItem("refresh_token");
+      },
+      set: function(refreshToken) {
+        localStorage.setItem("refresh_token", refreshToken);
+      }
+    },
+    expiresIn: {
       get: function() {
         return localStorage.getItem("expires_at");
       },
@@ -35,12 +39,12 @@ let auth = new Vue({
         localStorage.setItem("expires_at", expiresAt);
       }
     },
-    user: {
+    tokenType: {
       get: function() {
-        return JSON.parse(localStorage.getItem("user"));
+        return localStorage.getItem("token_type");
       },
-      set: function(user) {
-        localStorage.setItem("user", JSON.stringify(user));
+      set: function(tokenType) {
+        localStorage.setItem("token_type", tokenType);
       }
     }
   },
@@ -64,14 +68,32 @@ let auth = new Vue({
       });
     },
     isAuthenticated() {
-      return new Date().getTime() < this.expiresAt;
+      const date = new Date().getTime();
+
+      return date < this.expiresIn;
     },
-    handleAuthentication(code) {
+    async handleAuthentication(code) {
       /**
        * USING RESPONSE TYPE = code
        */
-      console.log(code);
-      return true;
+      try {
+        const { data } = await axios.post(
+          "/token?" +
+            querystring.stringify({
+              code
+            })
+        );
+
+        this.expiresIn = data.expires_in;
+        this.accessToken = data.access_token;
+        this.refreshToken = data.refresh_token;
+        this.tokenType = data.token_type;
+
+        return true;
+      } catch (error) {
+        console.log(error);
+        return false;
+      }
     }
   }
 });
